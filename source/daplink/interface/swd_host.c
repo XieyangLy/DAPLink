@@ -3,7 +3,7 @@
  * @brief   Implementation of swd_host.h
  *
  * DAPLink Interface Firmware
- * Copyright (c) 2009-2016, ARM Limited, All Rights Reserved
+ * Copyright (c) 2009-2017, ARM Limited, All Rights Reserved
  * SPDX-License-Identifier: Apache-2.0
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -20,13 +20,14 @@
  */
 
 #ifndef TARGET_MCU_CORTEX_A
-#include "RTL.h"
+#include "cmsis_os2.h"
 #include "target_reset.h"
 #include "target_config.h"
 #include "swd_host.h"
 #include "debug_cm.h"
 #include "DAP_config.h"
 #include "DAP.h"
+#include "target_family.h"
 
 // Default NVIC and Core debug base addresses
 // TODO: Read these addresses from ROM.
@@ -35,13 +36,6 @@
 
 // AP CSW register, base value
 #define CSW_VALUE (CSW_RESERVED | CSW_MSTRDBG | CSW_HPROT | CSW_DBGSTAT | CSW_SADDRINC)
-
-// SWD register access
-#define SWD_REG_AP        (1)
-#define SWD_REG_DP        (0)
-#define SWD_REG_R         (1<<1)
-#define SWD_REG_W         (0<<1)
-#define SWD_REG_ADR(a)    (a & 0x0c)
 
 #define DCRDR 0xE000EDF8
 #define DCRSR 0xE000EDF4
@@ -54,23 +48,6 @@
 #define SCB_AIRCR_PRIGROUP_Pos              8                                             /*!< SCB AIRCR: PRIGROUP Position */
 #define SCB_AIRCR_PRIGROUP_Msk             (7UL << SCB_AIRCR_PRIGROUP_Pos)                /*!< SCB AIRCR: PRIGROUP Mask */
 
-#if !defined(SOFT_RESET)
-#define SOFT_RESET  SYSRESETREQ
-
-// Some targets require a soft reset for flash programming (RESET_PROGRAM).
-// DAP operations as they are controlled by the remote debugger.
-#if defined(BOARD_BAMBINO_210) || defined(BOARD_BAMBINO_210E) || defined(TARGET_NRF51822)
-// SYSRESETREQ - Software reset of the Cortex-M core and on-chip peripherals
-#define SOFT_RESET  SYSRESETREQ
-#elif defined(BOARD_LPC4337)
-// VECTRESET - Software reset of Cortex-M core
-// For some Cortex-M devices, VECTRESET is the only way to reset the core.
-// VECTRESET is not supported on Cortex-M0 and Cortex-M1 cores.
-#define SOFT_RESET  VECTRESET
-#endif
-
-#endif
-
 typedef struct {
     uint32_t select;
     uint32_t csw;
@@ -81,12 +58,17 @@ typedef struct {
     uint32_t xpsr;
 } DEBUG_STATE;
 
+static SWD_CONNECT_TYPE reset_connect = CONNECT_NORMAL;
+
 static DAP_STATE dap_state;
+static uint32_t  soft_reset = SYSRESETREQ;
 
-static uint8_t swd_read_core_register(uint32_t n, uint32_t *val);
-static uint8_t swd_write_core_register(uint32_t n, uint32_t val);
+void swd_set_reset_connect(SWD_CONNECT_TYPE type)
+{
+    reset_connect = type;
+}
 
-static void int2array(uint8_t *res, uint32_t data, uint8_t len)
+void int2array(uint8_t *res, uint32_t data, uint8_t len)
 {
     uint8_t i = 0;
 
@@ -95,7 +77,7 @@ static void int2array(uint8_t *res, uint32_t data, uint8_t len)
     }
 }
 
-static uint8_t swd_transfer_retry(uint32_t req, uint32_t *data)
+uint8_t swd_transfer_retry(uint32_t req, uint32_t *data)
 {
     uint8_t i, ack;
 
@@ -111,6 +93,10 @@ static uint8_t swd_transfer_retry(uint32_t req, uint32_t *data)
     return ack;
 }
 
+void swd_set_soft_reset(uint32_t soft_reset_type)
+{
+    soft_reset = soft_reset_type;
+}
 
 uint8_t swd_init(void)
 {
@@ -125,6 +111,14 @@ uint8_t swd_init(void)
 uint8_t swd_off(void)
 {
     PORT_OFF();
+    return 1;
+}
+
+uint8_t swd_clear_errors(void)
+{
+    if (!swd_write_dp(DP_ABORT, STKCMPCLR | STKERRCLR | WDERRCLR | ORUNERRCLR)) {
+        return 0;
+    }
     return 1;
 }
 
@@ -422,7 +416,7 @@ uint8_t swd_write_word(uint32_t addr, uint32_t val)
 }
 
 // Read 8-bit byte from target memory.
-static uint8_t swd_read_byte(uint32_t addr, uint8_t *val)
+uint8_t swd_read_byte(uint32_t addr, uint8_t *val)
 {
     uint32_t tmp;
 
@@ -439,7 +433,7 @@ static uint8_t swd_read_byte(uint32_t addr, uint8_t *val)
 }
 
 // Write 8-bit byte to target memory.
-static uint8_t swd_write_byte(uint32_t addr, uint8_t val)
+uint8_t swd_write_byte(uint32_t addr, uint8_t val)
 {
     uint32_t tmp;
 
@@ -587,7 +581,11 @@ static uint8_t swd_write_debug_state(DEBUG_STATE *state)
         return 0;
     }
 
-    if (!swd_write_word(DBG_HCSR, DBGKEY | C_DEBUGEN)) {
+    if (!swd_write_word(DBG_HCSR, DBGKEY | C_DEBUGEN | C_MASKINTS | C_HALT)) {
+        return 0;
+    }
+
+    if (!swd_write_word(DBG_HCSR, DBGKEY | C_DEBUGEN | C_MASKINTS)) {
         return 0;
     }
 
@@ -603,7 +601,7 @@ static uint8_t swd_write_debug_state(DEBUG_STATE *state)
     return 1;
 }
 
-static uint8_t swd_read_core_register(uint32_t n, uint32_t *val)
+uint8_t swd_read_core_register(uint32_t n, uint32_t *val)
 {
     int i = 0, timeout = 100;
 
@@ -633,7 +631,7 @@ static uint8_t swd_read_core_register(uint32_t n, uint32_t *val)
     return 1;
 }
 
-static uint8_t swd_write_core_register(uint32_t n, uint32_t val)
+uint8_t swd_write_core_register(uint32_t n, uint32_t val)
 {
     int i = 0, timeout = 100;
 
@@ -700,6 +698,11 @@ uint8_t swd_flash_syscall_exec(const program_syscall_t *sysCallParam, uint32_t e
     }
 
     if (!swd_read_core_register(0, &state.r[0])) {
+        return 0;
+    }
+    
+    //remove the C_MASKINTS
+    if (!swd_write_word(DBG_HCSR, DBGKEY | C_DEBUGEN | C_HALT)) {
         return 0;
     }
 
@@ -791,23 +794,25 @@ uint8_t swd_init_debug(void)
             //do an abort on stale target, then reset the device
             swd_write_dp(DP_ABORT, DAPABORT);
             swd_set_target_reset(1);
-            os_dly_wait(2);
+            osDelay(2);
             swd_set_target_reset(0);
-            os_dly_wait(2);
+            osDelay(2);
             do_abort = 0;
         }
         swd_init();
         // call a target dependant function
         // this function can do several stuff before really
         // initing the debug
-        target_before_init_debug();
+        if (g_target_family && g_target_family->target_before_init_debug) {
+            g_target_family->target_before_init_debug();
+        }
 
         if (!JTAG2SWD()) {
             do_abort = 1;
             continue;
         }
 
-        if (!swd_write_dp(DP_ABORT, STKCMPCLR | STKERRCLR | WDERRCLR | ORUNERRCLR)) {
+        if (!swd_clear_errors()) {
             do_abort = 1;
             continue;
         }
@@ -848,7 +853,9 @@ uint8_t swd_init_debug(void)
         // call a target dependant function:
         // some target can enter in a lock state
         // this function can unlock these targets
-        target_unlock_sequence();
+        if (g_target_family && g_target_family->target_unlock_sequence) {
+            g_target_family->target_unlock_sequence();
+        }
 
         if (!swd_write_dp(DP_SELECT, 0)) {
             do_abort = 1;
@@ -860,11 +867,6 @@ uint8_t swd_init_debug(void)
     } while (--retries > 0);
     
     return 0;
-}
-
-__attribute__((weak)) void swd_set_target_reset(uint8_t asserted)
-{
-    (asserted) ? PIN_nRESET_OUT(0) : PIN_nRESET_OUT(1);
 }
 
 uint8_t swd_set_target_state_hw(TARGET_RESET_STATE state)
@@ -883,15 +885,21 @@ uint8_t swd_set_target_state_hw(TARGET_RESET_STATE state)
 
         case RESET_RUN:
             swd_set_target_reset(1);
-            os_dly_wait(2);
+            osDelay(2);
             swd_set_target_reset(0);
-            os_dly_wait(2);
+            osDelay(2);
             swd_off();
             break;
 
         case RESET_PROGRAM:
             if (!swd_init_debug()) {
                 return 0;
+            }
+            
+            if (reset_connect == CONNECT_UNDER_RESET) {
+                // Assert reset
+                swd_set_target_reset(1); 
+                osDelay(2);
             }
 
             // Enable debug
@@ -900,22 +908,26 @@ uint8_t swd_set_target_state_hw(TARGET_RESET_STATE state)
                     return 0;
                 // Target is in invalid state?
                 swd_set_target_reset(1);
-                os_dly_wait(2);
+                osDelay(2);
                 swd_set_target_reset(0);
-                os_dly_wait(2);
+                osDelay(2);
             }
 
             // Enable halt on reset
             if (!swd_write_word(DBG_EMCR, VC_CORERESET)) {
                 return 0;
             }
-
-            // Reset again
-            swd_set_target_reset(1);
-            os_dly_wait(2);
+            
+            if (reset_connect == CONNECT_NORMAL) {
+                // Assert reset
+                swd_set_target_reset(1); 
+                osDelay(2);
+            }
+            
+            // Deassert reset
             swd_set_target_reset(0);
-            os_dly_wait(2);
-
+            osDelay(2);
+            
             do {
                 if (!swd_read_word(DBG_HCSR, &val)) {
                     return 0;
@@ -941,7 +953,7 @@ uint8_t swd_set_target_state_hw(TARGET_RESET_STATE state)
                 return 0;
             }
 
-            if (!swd_write_dp(DP_ABORT, STKCMPCLR | STKERRCLR | WDERRCLR | ORUNERRCLR)) {
+            if (!swd_clear_errors()) {
                 return 0;
             }
 
@@ -1014,9 +1026,9 @@ uint8_t swd_set_target_state_sw(TARGET_RESET_STATE state)
 
         case RESET_RUN:
             swd_set_target_reset(1);
-            os_dly_wait(2);
+            osDelay(2);
             swd_set_target_reset(0);
-            os_dly_wait(2);
+            osDelay(2);
             swd_off();
             break;
 
@@ -1032,9 +1044,9 @@ uint8_t swd_set_target_state_sw(TARGET_RESET_STATE state)
                 }
                 // Target is in invalid state?
                 swd_set_target_reset(1);
-                os_dly_wait(2);
+                osDelay(2);
                 swd_set_target_reset(0);
-                os_dly_wait(2);
+                osDelay(2);
             }
 
             // Wait until core is halted
@@ -1054,11 +1066,11 @@ uint8_t swd_set_target_state_sw(TARGET_RESET_STATE state)
                 return 0;
             }
 
-            if (!swd_write_word(NVIC_AIRCR, VECTKEY | (val & SCB_AIRCR_PRIGROUP_Msk) | SOFT_RESET)) {
+            if (!swd_write_word(NVIC_AIRCR, VECTKEY | (val & SCB_AIRCR_PRIGROUP_Msk) | soft_reset)) {
                 return 0;
             }
 
-            os_dly_wait(2);
+            osDelay(2);
 
             do {
                 if (!swd_read_word(DBG_HCSR, &val)) {
@@ -1085,7 +1097,7 @@ uint8_t swd_set_target_state_sw(TARGET_RESET_STATE state)
                 return 0;
             }
 
-            if (!swd_write_dp(DP_ABORT, STKCMPCLR | STKERRCLR | WDERRCLR | ORUNERRCLR)) {
+            if (!swd_clear_errors()) {
                 return 0;
             }
 

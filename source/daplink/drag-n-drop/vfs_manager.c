@@ -3,7 +3,7 @@
  * @brief   Implementation of vfs_manager.h
  *
  * DAPLink Interface Firmware
- * Copyright (c) 2009-2016, ARM Limited, All Rights Reserved
+ * Copyright (c) 2009-2019, ARM Limited, All Rights Reserved
  * SPDX-License-Identifier: Apache-2.0
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -23,12 +23,11 @@
 #include "ctype.h"
 
 #include "main.h"
-#include "RTL.h"
+#include "cmsis_os2.h"
 #include "rl_usb.h"
 #include "virtual_fs.h"
 #include "vfs_manager.h"
 #include "daplink_debug.h"
-#include "validation.h"
 #include "info.h"
 #include "settings.h"
 #include "daplink.h"
@@ -118,6 +117,17 @@ static const file_transfer_state_t default_transfer_state = {
     STREAM_TYPE_NONE,
 };
 
+//Compile option not to include MSC at all, these will be dummy variables
+#ifndef MSC_ENDPOINT
+BOOL USBD_MSC_MediaReady = __FALSE;
+BOOL USBD_MSC_ReadOnly = __FALSE;
+U32 USBD_MSC_MemorySize;
+U32 USBD_MSC_BlockSize;
+U32 USBD_MSC_BlockGroup;
+U32 USBD_MSC_BlockCount;
+U8 *USBD_MSC_BlockBuf;
+#endif
+
 static uint32_t usb_buffer[VFS_SECTOR_SIZE / sizeof(uint32_t)];
 static error_t fail_reason = ERROR_SUCCESS;
 static file_transfer_state_t file_transfer_state;
@@ -128,8 +138,8 @@ static vfs_mngr_state_t vfs_state;
 static vfs_mngr_state_t vfs_state_next;
 static uint32_t time_usb_idle;
 
-static OS_MUT sync_mutex;
-static OS_TID sync_thread = 0;
+static osMutexId_t sync_mutex;
+static osThreadId_t sync_thread = 0;
 
 // Synchronization functions
 static void sync_init(void);
@@ -214,9 +224,8 @@ void vfs_mngr_periodic(uint32_t elapsed_ms)
         time_usb_idle += elapsed_ms;
     }
 
-    sync_unlock();
-
     if (!change_state) {
+        sync_unlock();
         return;
     }
 
@@ -344,23 +353,23 @@ void usbd_msc_write_sect(uint32_t sector, uint8_t *buf, uint32_t num_of_sectors)
 
 static void sync_init(void)
 {
-    sync_thread = os_tsk_self();
-    os_mut_init(&sync_mutex);
+    sync_thread = osThreadGetId();
+    sync_mutex = osMutexNew(NULL);
 }
 
 static void sync_assert_usb_thread(void)
 {
-    util_assert(os_tsk_self() == sync_thread);
+    util_assert(osThreadGetId() == sync_thread);
 }
 
 static void sync_lock(void)
 {
-    os_mut_wait(&sync_mutex, 0xFFFF);
+    osMutexAcquire(sync_mutex, 0);
 }
 
 static void sync_unlock(void)
 {
-    os_mut_release(&sync_mutex);
+    osMutexRelease(sync_mutex);
 }
 
 static bool changing_state()
@@ -586,7 +595,7 @@ static void transfer_update_file_info(vfs_file_t file, uint32_t start_sector, ui
     }
 
     // Check - File size must either grow or be smaller than the size already transferred
-    if ((size < file_transfer_state.file_size) && (size < file_transfer_state.size_transferred)) {
+    if ((size < file_transfer_state.file_size) && (size < file_transfer_state.size_transferred) && (size > 0)) {
         vfs_mngr_printf("    error: file size changed from %i to %i\r\n", file_transfer_state.file_size, size);
         transfer_update_state(ERROR_ERROR_DURING_TRANSFER);
         return;
@@ -600,8 +609,8 @@ static void transfer_update_file_info(vfs_file_t file, uint32_t start_sector, ui
     }
 
     // Check - stream must be the same
-    if (stream != file_transfer_state.stream) {
-        vfs_mngr_printf("    error: changed types during transfer from %i to %i\r\n", stream, file_transfer_state.stream);
+    if ((stream != STREAM_TYPE_NONE) && (stream != file_transfer_state.stream)) {
+        vfs_mngr_printf("    error: changed types during transfer from %i to %i\r\n", file_transfer_state.stream, stream);
         transfer_update_state(ERROR_ERROR_DURING_TRANSFER);
         return;
     }
@@ -666,7 +675,7 @@ static void transfer_stream_open(stream_type_t stream, uint32_t start_sector)
 
     // Check - stream must be the same
     if (stream != file_transfer_state.stream) {
-        vfs_mngr_printf("    error: changed types during tranfer from %i to %i\r\n", stream, file_transfer_state.stream);
+        vfs_mngr_printf("    error: changed types during transfer from %i to %i\r\n", file_transfer_state.stream, stream);
         transfer_update_state(ERROR_ERROR_DURING_TRANSFER);
         return;
     }

@@ -3,7 +3,7 @@
  * @brief   implementation of USB CDC ACM middleware
  *
  * DAPLink Interface Firmware
- * Copyright (c) 2009-2016, ARM Limited, All Rights Reserved
+ * Copyright (c) 2009-2019, ARM Limited, All Rights Reserved
  * SPDX-License-Identifier: Apache-2.0
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -19,12 +19,15 @@
  * limitations under the License.
  */
 
-#include "RTL.h"
+#include "cmsis_os2.h"
 #include "rl_usb.h"
 #include "main.h"
 #include "target_reset.h"
 #include "uart.h"
+#ifdef DRAG_N_DROP_SUPPORT
 #include "flash_intf.h"
+#endif
+#include "target_family.h"
 
 UART_Configuration UART_Config;
 
@@ -112,13 +115,16 @@ static U32 start_break_time = 0;
 int32_t USBD_CDC_ACM_SendBreak(uint16_t dur)
 {
     uint32_t end_break_time;
-    if (!flash_intf_target->flash_busy()) { //added checking if flashing on target is in progress
+#ifdef DRAG_N_DROP_SUPPORT    
+    if (!flash_intf_target->flash_busy()) 
+#endif    
+    { //added checking if flashing on target is in progress
         // reset and send the unique id over CDC
         if (dur != 0) {
-            start_break_time = os_time_get();
+            start_break_time = osKernelGetSysTimerCount();
             target_set_state(RESET_HOLD);
         } else {
-            end_break_time = os_time_get();
+            end_break_time = osKernelGetSysTimerCount();
 
             // long reset -> send uID over serial (300 -> break > 3s)
             if ((end_break_time - start_break_time) >= (300)) {
