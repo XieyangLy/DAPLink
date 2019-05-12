@@ -22,7 +22,7 @@
 #ifndef __DAP_CONFIG_H__
 #define __DAP_CONFIG_H__
 
-#include "stm32f1xx.h"
+#include "stm32h7xx.h"
 #include "stdint.h"
 #include "cmsis_os2.h"
 #include "IO_Config.h"

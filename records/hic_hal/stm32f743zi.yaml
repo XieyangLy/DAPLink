@@ -7,7 +7,7 @@ common:
         - INTERFACE_STM32H743ZI
         - USE_HAL_DRIVER
         - STM32H743XX
-        - DAPLINK_HIC_ID=0x9796990B  # DAPLINK_HIC_ID_STM32H743ZI
+        - DAPLINK_HIC_ID=0x2E127000  # DAPLINK_HIC_ID_STM32H743ZI
         - __packed=__packed          # Prevent redefinition of __packed with ARMCC
         - DAPLINK_NO_ASSERT_FILENAMES
         - OS_CLOCK=400000000

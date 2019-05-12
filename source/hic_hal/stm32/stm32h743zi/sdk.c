@@ -19,7 +19,7 @@
  * limitations under the License.
  */
 
-#include "stm32f1xx.h"
+#include "stm32h7xx.h"
 #include "DAP_config.h"
 #include "gpio.h"
 #include "target_reset.h"
