@@ -69,9 +69,9 @@ module:
     hic_max32625: &module_hic_max32625
         - records/rtos/rtos-cm4.yaml
         - records/hic_hal/max32625.yaml
-    hic_stm32l476xx: &module_hic_stm32l476xx
+    hic_stm32f743zi: &module_hic_stm32f743zi
         - records/rtos/rtos-cm4.yaml
-        - records/hic_hal/stm32l476xx.yaml
+        - records/hic_hal/stm32f743zi.yaml
 
 projects:
     kl26z_bl:

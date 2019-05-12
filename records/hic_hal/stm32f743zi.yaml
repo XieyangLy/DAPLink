@@ -1,0 +1,46 @@
+common:
+    target:
+        - stm32h743zi
+    core:
+        - Cortex-M4
+    macros:
+        - INTERFACE_STM32H743ZI
+        - USE_HAL_DRIVER
+        - STM32H743XX
+        - DAPLINK_HIC_ID=0x9796990B  # DAPLINK_HIC_ID_STM32H743ZI
+        - __packed=__packed          # Prevent redefinition of __packed with ARMCC
+        - DAPLINK_NO_ASSERT_FILENAMES
+        - OS_CLOCK=400000000
+    includes:
+        - source/hic_hal/stm32/stm32h743zi
+        - source/hic_hal/stm32/stm32h743zi/cmsis
+        - source/hic_hal/stm32/stm32h743zi/STM32H7xx_HAL_Driver
+        - source/hic_hal/stm32/stm32h743zi/STM32H7xx_HAL_Driver/Inc
+    sources:
+        hic_hal:
+            - source/hic_hal/stm32/stm32h743zi
+            - source/hic_hal/stm32/stm32h743zi/cmsis
+            - source/hic_hal/stm32/stm32h743zi/armcc
+            - source/hic_hal/stm32/stm32h743zi/STM32H7xx_HAL_Driver/Src
+
+tool_specific:
+    uvision:
+        misc:
+            ld_flags:
+                - --predefine="-I..\..\..\source\hic_hal\stm32\stm32h743zi"
+            c_flags:
+                - --no_unaligned_access
+            cxx_flags:
+                - --no_unaligned_access
+            asm_flags:
+                - --no_unaligned_access
+    make_armcc:
+        misc:
+            ld_flags:
+                - --predefine="-Isource\hic_hal\stm32\stm32h743zi"
+            c_flags:
+                - --no_unaligned_access
+            cxx_flags:
+                - --no_unaligned_access
+            asm_flags:
+                - --no_unaligned_access
