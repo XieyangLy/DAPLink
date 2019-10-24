@@ -1,6 +1,6 @@
 #
 # DAPLink Interface Firmware
-# Copyright (c) 2009-2016, ARM Limited, All Rights Reserved
+# Copyright (c) 2009-2019, ARM Limited, All Rights Reserved
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -56,12 +56,14 @@ PROJECT_RELEASE_INFO = {
     ("k20dx_mimxrt1020_evk_qspi_if",                True,       0x8000,     "bin"       ),
     ("k20dx_mimxrt1050_evk_hyper_if",               True,       0x8000,     "bin"       ),
     ("k20dx_mimxrt1050_evk_qspi_if",                True,       0x8000,     "bin"       ),
+    ('k20dx_ep_agora_if',                           True,      	0x0000,     "bin"       ),
     ("k26f_frdmk32w042_if",                         False,      0x8000,     "bin"       ),
     ("lpc11u35_archble_if",                         False,      0x0000,     "bin"       ),
     ("lpc11u35_archpro_if",                         False,      0x0000,     "bin"       ),
     ("lpc11u35_archmax_if",                         False,      0x0000,     "bin"       ),
     ("lpc11u35_wio3g_if",                           False,      0x0000,     "bin"       ),
     ("lpc11u35_wiobg96_if",                         False,      0x0000,     "bin"       ),
+    ("lpc11u35_wio_emw3166_if",                     False,      0x0000,     "bin"       ),
     ("lpc11u35_hrm1017_if",                         False,      0x0000,     "bin"       ),
     ("lpc11u35_sscity_if",                          False,      0x0000,     "bin"       ),
     ("lpc11u35_ssci824_if",                         False,      0x0000,     "bin"       ),
@@ -119,9 +121,21 @@ PROJECT_RELEASE_INFO = {
     ('lpc11u35_mtb_stm32l475_if',                   False,      0x0000,     "bin"       ),
     ('lpc11u35_mtb_aconno_acn52832_if',             False,      0x0000,     "bin"       ),
     ('lpc11u35_mtb_stm32f439_if',                   False,      0x0000,     "bin"       ),
+    ('lpc11u35_musca_a_if',                         False,      0x0000,     "bin"       ),
+    ('lpc11u35_musca_b_if',                         False,      0x0000,     "bin"       ),
+    ('lpc11u35_musca_b_eflash_if',                  False,      0x0000,     "bin"       ),
     ('max32620_max32625mbed_if',                    False,      0x0000,     "bin"       ),
     ('max32625_max32620fthr_if',                    False,      0x0000,     "bin"       ),
     ('max32625_max32630fthr_if',                    False,      0x0000,     "bin"       ),
+    ('kl26z_if',                                    False,      0x0000,     "bin"       ),
+    ('k20dx_if',                                    False,      0x0000,     "bin"       ),
+    ('k26f_if',                                     False,      0x0000,     "bin"       ),
+    ('lpc11u35_if',                                 False,      0x0000,     "bin"       ),
+    ('lpc4322_if',                                  False,      0x0000,     "bin"       ),
+    ('max32620_if',                                 False,      0x0000,     "bin"       ),
+    ('max32625_if',                                 False,      0x0000,     "bin"       ),
+    ('sam3u2c_if',                                  False,      0x0000,     "bin"       ),
+    ('stm32f103xb_if',                              False,      0x0000,     "bin"       ),
 }
 
 # Add new HICs here
@@ -228,6 +242,7 @@ SUPPORTED_CONFIGURATIONS = [
     (   0x2202,     VENDOR_TO_FAMILY('Wiznet', 1),      'lpc11u35_wizwiki_w7500_eco_if',            None,               'WIZwiki-W7500ECO'                      ),
     (   0x2203,     VENDOR_TO_FAMILY('Wiznet', 1),      'lpc11u35_wizwiki_w7500p_if',               None,               'WIZwiki-W7500P'                        ),
     (   0x2410,     VENDOR_TO_FAMILY('Stub', 1),        'lpc11u35_mbed_cloud_connect_if',           None,               None                                    ),
+    (   0x2600,     VENDOR_TO_FAMILY('Nordic', 2),      'k20dx_ep_agora_if',                        None,               None                                    ),
     (   0x3104,     VENDOR_TO_FAMILY('Nordic', 2),      'lpc11u35_dipdap_sdt52832b_if',             None,               None                                    ),
     (   0x3108,     VENDOR_TO_FAMILY('Stub', 1),        'lpc11u35_dipdap_sdt32429b_if',             None,               None                                    ),
     (   0x3105,     VENDOR_TO_FAMILY('NXP', 1),         'lpc11u35_dipdap_sdt64b_if',                None,               None                                    ),
@@ -235,6 +250,9 @@ SUPPORTED_CONFIGURATIONS = [
     (   0x3110,     VENDOR_TO_FAMILY('Stub', 1),        'lpc11u35_dipdap_sdt32439b_if',             None,               None                                    ),
     (   0x3300,     VENDOR_TO_FAMILY('TI', 1),          'lpc11u35_dipdap_cc3220sf_if',              None,               'CC3220SF'                              ),
     (   0x4600,     VENDOR_TO_FAMILY('Realtek', 1),     'lpc11u35_rtl8195am_if',                    None,               'REALTEK-RTL8195AM'                     ),
+    (   0x5006,     VENDOR_TO_FAMILY('Stub', 1),        'lpc11u35_musca_a_if',                      None,               'ARM_MUSCA_A1'                          ),
+    (   0x5007,     VENDOR_TO_FAMILY('Stub', 1),        'lpc11u35_musca_b_if',                      None,               'ARM_MUSCA_B1'                          ),
+    (   0x5007,     VENDOR_TO_FAMILY('Stub', 1),        'lpc11u35_musca_b_eflash_if',               None,               'ARM_MUSCA_B1'                          ),
     (   0x5050,     VENDOR_TO_FAMILY('Stub', 1),        'lpc11u35_arm_watch_stm32f411_if',          None,               None                                    ),
     (   0x5051,     VENDOR_TO_FAMILY('Stub', 3),        'lpc11u35_arm_watch_efm32_if',              None,               None                                    ),
     (   0x5052,     VENDOR_TO_FAMILY('Nordic', 1),      'lpc11u35_arm_watch_nrf51_if',              None,               None                                    ),
@@ -255,11 +273,21 @@ SUPPORTED_CONFIGURATIONS = [
     (   0x9014,     VENDOR_TO_FAMILY('Stub', 1),        'lpc11u35_wio3g_if',                        None,               None                                    ),
     (   0x9015,     VENDOR_TO_FAMILY('Stub', 1),        'lpc11u35_wiobg96_if',                      None,               None                                    ),
     (   0x9016,     VENDOR_TO_FAMILY('Nordic', 2),      'lpc11u35_96b_nitrogen_if',                 None,               None                                    ), # TODO - set target to 'Seeed-96Boards-Nitrogen' when mbed-os supports this
+    (   0x9017,     VENDOR_TO_FAMILY('Stub', 1),        'lpc11u35_wio_emw3166_if',                  None,               'WIO_EMW3166'                                    ), # TODO - set target to 'Seeed-96Boards-Nitrogen' when mbed-os supports this
     (   0x9900,     VENDOR_TO_FAMILY('Nordic', 1),      'kl26z_microbit_if',                        'kl26z_bl',         'Microbit'                              ),
     (   0x9901,     VENDOR_TO_FAMILY('Nordic', 1),      'kl26z_microbit_if',                        'kl26z_bl',         'Microbit'                              ),
     (   0xC000,     VENDOR_TO_FAMILY('Stub', 1),        'lpc11u35_cocorico_if',                     None,               'CoCo-ri-Co'                            ),
     (   0xC006,     VENDOR_TO_FAMILY('Nordic', 1),      'lpc11u35_vbluno51_if',                     None,               'VBLUNO51'                              ),
     (   0xC005,     VENDOR_TO_FAMILY('Nordic', 1),      'lpc11u35_mtconnect04s_if',                 None,               'MtConnect04S'                          ),
+    (   0x0000,     VENDOR_TO_FAMILY('Stub', 1),        'kl26z_if',                                 None,               None                                    ),
+    (   0x0000,     VENDOR_TO_FAMILY('Stub', 1),        'k20dx_if',                                 None,               None                                    ),
+    (   0x0000,     VENDOR_TO_FAMILY('Stub', 1),        'k26f_if',                                  None,               None                                    ),
+    (   0x0000,     VENDOR_TO_FAMILY('Stub', 1),        'lpc11u35_if',                              None,               None                                    ),
+    (   0x0000,     VENDOR_TO_FAMILY('Stub', 1),        'lpc4322_if',                               None,               None                                    ),
+    (   0x0000,     VENDOR_TO_FAMILY('Stub', 1),        'max32620_if',                              None,               None                                    ),
+    (   0x0000,     VENDOR_TO_FAMILY('Stub', 1),        'max32625_if',                              None,               None                                    ),
+    (   0x0000,     VENDOR_TO_FAMILY('Stub', 1),        'sam3u2c_if',                               None,               None                                    ),
+    (   0x0000,     VENDOR_TO_FAMILY('Stub', 1),        'stm32f103xb_if',                           None,               None                                    ),
 ]
 
 # Add new HICs here

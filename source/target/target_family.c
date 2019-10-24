@@ -108,6 +108,10 @@ void init_family(void)
         }
         index++;
     }
+    
+    if(g_target_family == NULL){ //default family
+        g_target_family = &g_hw_reset_family;
+    }
 }
 
 uint8_t target_family_valid(void)
@@ -149,5 +153,14 @@ void swd_set_target_reset(uint8_t asserted)
         g_target_family->swd_set_target_reset(asserted);
     }else {
         (asserted) ? PIN_nRESET_OUT(0) : PIN_nRESET_OUT(1);
+    }
+}
+
+uint32_t target_get_apsel()
+{
+    if (g_target_family && g_target_family->apsel) {
+        return g_target_family->apsel;
+    } else {
+        return 0;
     }
 }
